@@ -14,8 +14,8 @@ kafka:
 
 paths:
   weather_csv: /workspace/A2/A2A/weather_transf.csv
-  buildings_csv: /workspace/A2/A2B/new_building_information.csv
-  meters_csv: /workspace/A2/A2B/new_meters.csv
+  buildings_csv: /workspace/A2/A2A/new_building_information.csv
+  meters_csv: /workspace/A2/A2A/new_meters.csv
   model_path: /workspace/A2/A2A/models/gbt_best_model
 
 streaming:

@@ -20,23 +20,9 @@ Thumbs.db
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
 
-# Spark and streaming runtime state
-A2B/checkpoints/
-A2B/chk/
-A2B/parquet/
-A2B/spark-warehouse/
-A2B/metastore_db/
-derby.log
-
-# Producer/consumer pointer state
-A2B/.weather_pointer.json
-A2B/.site_pointers/
-A2B/.site_seq_pointers/
-A2B/site_seq_pointers/
-
 # Large local datasets that are not practical to keep in Git
 A2A/meters.csv
-A2B/new_meters.csv
+A2A/new_meters.csv
 
 # Generated model artifacts
 A2A/models/
