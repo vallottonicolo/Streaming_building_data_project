@@ -1,0 +1,105 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: a2-prod-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: a2-prod-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "39092:39092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:39092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:39092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+  app:
+    build:
+      context: ..
+      dockerfile: A2B_production/docker/Dockerfile
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    environment:
+      A2B_CONFIG: /workspace/A2/A2B_production/configs/local.yaml
+    command: ["a2b-prod", "--help"]
+    healthcheck:
+      disable: true
+
+  inference:
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    command: ["a2b-prod", "--config", "/workspace/A2/A2B_production/configs/local.yaml", "run-inference"]
+    profiles: ["pipeline"]
+    healthcheck:
+      disable: true
+
+  producer:
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    command: ["a2b-prod", "--config", "/workspace/A2/A2B_production/configs/local.yaml", "produce-weather"]
+    profiles: ["pipeline"]
+    healthcheck:
+      disable: true
+
+  daily-aggregator:
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    command: ["a2b-prod", "--config", "/workspace/A2/A2B_production/configs/local.yaml", "run-daily-aggregator"]
+    profiles: ["pipeline"]
+    healthcheck:
+      disable: true
+
+  lakehouse-sink:
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    command: ["a2b-prod", "--config", "/workspace/A2/A2B_production/configs/local.yaml", "run-lakehouse-sink"]
+    profiles: ["pipeline"]
+    healthcheck:
+      disable: true
+
+  dashboard:
+    image: a2b-production-app
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    volumes:
+      - ..:/workspace/A2
+    working_dir: /workspace/A2/A2B_production
+    command: ["a2b-prod", "--config", "/workspace/A2/A2B_production/configs/local.yaml", "run-dashboard"]
+    profiles: ["dashboard"]
+    healthcheck:
+      disable: true

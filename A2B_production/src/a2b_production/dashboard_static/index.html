@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A2B Production Dashboard</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f6f7f9; color: #1f2933; }
+    header { padding: 18px 24px; background: #12343b; color: white; }
+    main { padding: 18px; display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    section { background: white; border: 1px solid #dde3ea; border-radius: 8px; padding: 14px; min-height: 320px; }
+    section.full { grid-column: 1 / -1; min-height: 120px; }
+    h1 { margin: 0; font-size: 22px; }
+    h2 { margin: 0 0 10px; font-size: 16px; }
+    .status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+    label { display: grid; gap: 5px; font-size: 13px; color: #52616f; }
+    select { min-width: 180px; padding: 8px 10px; border: 1px solid #b8c4cf; border-radius: 6px; background: white; color: #1f2933; }
+    .metric { background: #eef3f7; border-radius: 6px; padding: 10px; }
+    .metric strong { display: block; font-size: 20px; }
+    .metric span { color: #52616f; font-size: 12px; }
+    canvas { width: 100%; height: 260px; display: block; }
+    .chart-note { color: #52616f; font-size: 13px; margin-top: 8px; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>A2B Production Streaming Dashboard</h1>
+  </header>
+  <main>
+    <section class="full">
+      <h2>Live Status</h2>
+      <div id="status" class="status"></div>
+    </section>
+    <section class="full">
+      <h2>Filters</h2>
+      <div class="controls">
+        <label>
+          Site
+          <select id="siteSelect"></select>
+        </label>
+        <label>
+          Building
+          <select id="buildingSelect"></select>
+        </label>
+      </div>
+    </section>
+    <section class="full">
+      <h2>Site Daily: Predicted vs Real</h2>
+      <canvas id="siteComparisonChart"></canvas>
+      <div id="siteComparisonNote" class="chart-note"></div>
+    </section>
+    <section class="full">
+      <h2>Building Daily: Predicted vs Real</h2>
+      <canvas id="buildingComparisonChart"></canvas>
+      <div id="buildingComparisonNote" class="chart-note"></div>
+    </section>
+  </main>
+  <script>
+    const selections = { site: "", building: "" };
+
+    /** Size a canvas to its rendered width and device pixel ratio. */
+    function resizeCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      const width = Math.max(320, Math.floor(rect.width));
+      const height = 260;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.style.height = `${height}px`;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      return { ctx, width, height };
+    }
+
+    /** Format large axis values using compact units. */
+    function compactNumber(value) {
+      return Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+    }
+
+    /** Pick a readable y-axis tick interval for the current data range. */
+    function yTickStep(maxValue) {
+      if (maxValue >= 1000000) return 1000000;
+      if (maxValue >= 100000) return 100000;
+      if (maxValue >= 10000) return 10000;
+      return 1000;
+    }
+
+    /** Draw a two-series daily comparison chart with zero baseline and grid lines. */
+    function drawMultiLineChart(canvasId, noteId, rows, title, series, emptyMessage) {
+      const canvas = document.getElementById(canvasId);
+      const note = document.getElementById(noteId);
+      const { ctx, width, height } = resizeCanvas(canvas);
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      if (!rows.length) {
+        ctx.fillStyle = "#52616f";
+        ctx.font = "14px Arial";
+        ctx.fillText(emptyMessage || "Waiting for matched daily records...", 18, 42);
+        note.textContent = emptyMessage || "No matched predicted and real daily records yet.";
+        return;
+      }
+
+      const pad = { left: 72, right: 22, top: 28, bottom: 42 };
+      const values = rows.flatMap(row => series.map(s => Number(row[s.field]))).filter(Number.isFinite);
+      const minY = 0;
+      const rawMaxY = Math.max(...values);
+      const tickStep = yTickStep(rawMaxY);
+      let maxY = Math.ceil(rawMaxY / tickStep) * tickStep;
+      if (maxY <= 0) maxY = tickStep;
+      const yRange = maxY - minY;
+      const xStep = rows.length > 1 ? (width - pad.left - pad.right) / (rows.length - 1) : 0;
+      const yFor = value => pad.top + (maxY - value) / yRange * (height - pad.top - pad.bottom);
+      const xFor = idx => pad.left + idx * xStep;
+
+      ctx.strokeStyle = "#edf1f5";
+      ctx.lineWidth = 1;
+      for (let tick = 0; tick <= maxY; tick += tickStep) {
+        const y = yFor(tick);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+      }
+      rows.forEach((_, idx) => {
+        const x = xFor(idx);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, height - pad.bottom);
+        ctx.stroke();
+      });
+
+      ctx.strokeStyle = "#d8e0e8";
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, height - pad.bottom);
+      ctx.lineTo(width - pad.right, height - pad.bottom);
+      ctx.stroke();
+
+      ctx.fillStyle = "#52616f";
+      ctx.font = "12px Arial";
+      for (let tick = 0; tick <= maxY; tick += tickStep) {
+        const y = yFor(tick);
+        ctx.fillText(compactNumber(tick), 8, y + 4);
+      }
+      const labelEvery = Math.max(1, Math.ceil(rows.length / 5));
+      rows.forEach((row, idx) => {
+        if (idx !== 0 && idx !== rows.length - 1 && idx % labelEvery !== 0) return;
+        const x = xFor(idx);
+        ctx.textAlign = idx === rows.length - 1 ? "right" : "left";
+        ctx.fillText(row.date, x, height - 14);
+      });
+      ctx.textAlign = "left";
+
+      series.forEach((s, seriesIdx) => {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        rows.forEach((row, idx) => {
+          const x = xFor(idx);
+          const y = yFor(Number(row[s.field]));
+          if (idx === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(xFor(rows.length - 1), yFor(Number(rows[rows.length - 1][s.field])), 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        const legendX = pad.left + seriesIdx * 110;
+        ctx.fillRect(legendX, 10, 12, 3);
+        ctx.fillStyle = "#1f2933";
+        ctx.fillText(s.label, legendX + 18, 14);
+      });
+
+      note.textContent = `${title}: ${rows.length} matched days, latest ${rows[rows.length - 1].date}`;
+    }
+
+    /** Sort string values numerically when possible, otherwise lexically. */
+    function numericSort(values) {
+      return [...values].sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
+    }
+
+    /** Replace a select's options and preserve the previous selection when valid. */
+    function setOptions(select, values, selectedValue, emptyLabel) {
+      const nextValues = numericSort(values.map(v => String(v)));
+      select.innerHTML = "";
+      if (!nextValues.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = emptyLabel;
+        select.appendChild(option);
+        select.value = "";
+        return "";
+      }
+      for (const value of nextValues) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      }
+      const nextSelected = nextValues.includes(selectedValue) ? selectedValue : nextValues[0];
+      select.value = nextSelected;
+      return nextSelected;
+    }
+
+    /** Refresh site and building filter options from API state metadata. */
+    function updateFilters(data) {
+      const siteSelect = document.getElementById("siteSelect");
+      const buildingSelect = document.getElementById("buildingSelect");
+      const sites = data.available_sites || [];
+      selections.site = setOptions(siteSelect, sites, selections.site, "Waiting for site data");
+      const buildingsBySite = data.available_buildings_by_site || {};
+      const buildings = selections.site ? (buildingsBySite[selections.site] || []) : [];
+      selections.building = setOptions(buildingSelect, buildings, selections.building, "Waiting for building data");
+    }
+
+    /** Convert comparison records into the latest chartable daily rows. */
+    function latestComparisonRows(records) {
+      return records
+        .filter(r =>
+          r.date &&
+          Number.isFinite(Number(r.predicted_daily)) &&
+          Number.isFinite(Number(r.real_daily))
+        )
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .slice(-30)
+        .map(r => ({
+          date: String(r.date),
+          predicted: Number(r.predicted_daily),
+          real: Number(r.real_daily)
+        }));
+    }
+
+    /** Render topic message counters consumed by this dashboard instance. */
+    function renderStatus(data) {
+      const received = data.received || {};
+      const unique = data.unique_counts || {};
+      document.getElementById("status").innerHTML = `
+        <div class="metric"><strong>${received.predictions || 0}</strong>q7a messages arrived <span>${unique.predictions || 0} unique stored</span></div>
+        <div class="metric"><strong>${received.building || 0}</strong>q7b messages arrived <span>${unique.building || 0} unique stored</span></div>
+        <div class="metric"><strong>${received.site_daily || 0}</strong>q7c messages arrived <span>${unique.site_daily || 0} unique stored</span></div>
+      `;
+    }
+
+    /** Apply the selected site and building filters to dashboard datasets. */
+    function applyCurrentFilters(data) {
+      const selectedSite = selections.site;
+      const selectedBuilding = selections.building;
+      return {
+        siteComparison: (data.site_daily_comparison || []).filter(r => String(r.site_id) === selectedSite),
+        buildingComparison: (data.building_daily_comparison || []).filter(
+          r => String(r.site_id) === selectedSite && String(r.building_id) === selectedBuilding
+        ),
+      };
+    }
+
+    /** Fetch dashboard state and redraw status, filters, and charts. */
+    async function refresh() {
+      const res = await fetch("/api/state");
+      const data = await res.json();
+      updateFilters(data);
+      renderStatus(data);
+      const filtered = applyCurrentFilters(data);
+      const siteText = selections.site ? `site ${selections.site}` : "selected site";
+      const buildingText = selections.building ? `building ${selections.building}` : "selected building";
+      drawMultiLineChart(
+        "siteComparisonChart",
+        "siteComparisonNote",
+        latestComparisonRows(filtered.siteComparison),
+        `Predicted vs real daily energy for ${siteText}`,
+        [
+          { field: "predicted", label: "Predicted", color: "#2ca02c" },
+          { field: "real", label: "Real", color: "#d62728" }
+        ],
+        selections.site ? `No matched predicted and real daily records yet for site ${selections.site}.` : "Waiting for site data..."
+      );
+      drawMultiLineChart(
+        "buildingComparisonChart",
+        "buildingComparisonNote",
+        latestComparisonRows(filtered.buildingComparison),
+        `Predicted vs real daily energy for ${buildingText} on ${siteText}`,
+        [
+          { field: "predicted", label: "Predicted", color: "#2ca02c" },
+          { field: "real", label: "Real", color: "#d62728" }
+        ],
+        selections.site && selections.building
+          ? `No matched predicted and real daily records yet for site ${selections.site}, building ${selections.building}.`
+          : "Waiting for site and building data..."
+      );
+    }
+    document.getElementById("siteSelect").addEventListener("change", event => {
+      selections.site = event.target.value;
+      selections.building = "";
+      refresh();
+    });
+    document.getElementById("buildingSelect").addEventListener("change", event => {
+      selections.building = event.target.value;
+      refresh();
+    });
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>

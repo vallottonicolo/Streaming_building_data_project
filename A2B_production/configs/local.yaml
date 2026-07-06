@@ -1,0 +1,50 @@
+project_root: /workspace/A2
+runtime_dir: /workspace/A2/A2B_production/runtime
+
+kafka:
+  bootstrap_servers: kafka:9092
+  topics:
+    weather: weather_stream
+    weather_6h_blocks: weather_6h_blocks
+    predictions_7a: predictions_7a
+    building_6h_7b: agg_building6h_7b
+    site_daily_7c: agg_site_daily_7c
+  partitions: 16
+  replication_factor: 1
+
+paths:
+  weather_csv: /workspace/A2/A2A/weather_transf.csv
+  buildings_csv: /workspace/A2/A2B/new_building_information.csv
+  meters_csv: /workspace/A2/A2B/new_meters.csv
+  model_path: /workspace/A2/A2A/models/gbt_best_model
+
+streaming:
+  run_mode: replay
+  trigger_interval: 10 seconds
+  max_offsets_per_trigger: 1152
+  min_partitions: 16
+  watermark_delay: 5 seconds
+  producer_ticks_per_batch: 6
+  producer_tick_sleep_seconds: 0.1
+
+spark:
+  master: local[4]
+  shuffle_partitions: 8
+  timezone: UTC
+
+hudi:
+  enabled: true
+  base_path: /workspace/A2/A2B_production/runtime/hudi
+  compaction_delta_commits: 10
+
+lakehouse:
+  trigger_interval: 10 seconds
+  max_offsets_per_trigger: 1152
+  min_partitions: 16
+  starting_offsets: earliest
+
+dashboard:
+  host: 0.0.0.0
+  port: 8080
+  max_records: 5000
+  retention_days: 30

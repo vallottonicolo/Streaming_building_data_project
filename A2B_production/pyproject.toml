@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a2b-production"
+version = "0.1.0"
+description = "Production-style streaming inference package for A2B energy predictions"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "kafka-python>=2.0.2",
+  "pandas>=2.0",
+  "pyyaml>=6.0",
+  "pytest>=8.0"
+]
+
+[project.scripts]
+a2b-prod = "a2b_production.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+a2b_production = ["dashboard_static/*"]
