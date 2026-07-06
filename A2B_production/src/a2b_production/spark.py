@@ -1,3 +1,5 @@
+"""Create Spark sessions and shared Kafka/Hudi DataFrame helper columns."""
+
 from __future__ import annotations
 
 from pathlib import Path

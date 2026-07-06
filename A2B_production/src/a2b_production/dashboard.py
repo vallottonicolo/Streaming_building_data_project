@@ -1,3 +1,5 @@
+"""Serve the FastAPI dashboard that displays recent Kafka output records."""
+
 from __future__ import annotations
 
 from datetime import date, timedelta

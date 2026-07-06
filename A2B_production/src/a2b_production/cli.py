@@ -1,3 +1,5 @@
+"""Command-line entry point that dispatches the A2B production services."""
+
 from __future__ import annotations
 
 import argparse

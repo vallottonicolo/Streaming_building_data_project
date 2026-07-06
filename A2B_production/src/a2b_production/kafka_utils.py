@@ -1,3 +1,5 @@
+"""Provide Kafka topic management plus shared producer and consumer helpers."""
+
 from __future__ import annotations
 
 import json

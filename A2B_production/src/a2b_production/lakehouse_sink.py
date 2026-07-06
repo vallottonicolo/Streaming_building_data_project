@@ -1,3 +1,5 @@
+"""Stream Kafka topics into Hudi lakehouse tables for persisted app outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

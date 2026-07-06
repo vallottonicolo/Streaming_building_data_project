@@ -1,3 +1,5 @@
+"""Define shared Spark schemas and output column contracts for the pipeline."""
+
 from pyspark.sql.types import (
     ArrayType,
     BooleanType,

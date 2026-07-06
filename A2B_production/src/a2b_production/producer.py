@@ -1,3 +1,5 @@
+"""Publish weather source data into Kafka for the production inference pipeline."""
+
 from __future__ import annotations
 
 import json

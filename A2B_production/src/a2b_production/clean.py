@@ -1,3 +1,5 @@
+"""Clean generated runtime state for a local A2B production run."""
+
 from __future__ import annotations
 
 import shutil

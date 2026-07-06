@@ -1,3 +1,5 @@
+"""Aggregate building-level 6-hour Kafka predictions into site daily records."""
+
 from __future__ import annotations
 
 import time

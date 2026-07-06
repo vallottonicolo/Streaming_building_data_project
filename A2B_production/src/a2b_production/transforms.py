@@ -1,3 +1,5 @@
+"""Transform raw weather and prediction DataFrames into assignment output shapes."""
+
 from __future__ import annotations
 
 from datetime import datetime

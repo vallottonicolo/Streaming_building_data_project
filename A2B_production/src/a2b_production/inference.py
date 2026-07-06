@@ -1,3 +1,5 @@
+"""Run the streaming inference job from weather Kafka events to prediction topics."""
+
 from __future__ import annotations
 
 import time

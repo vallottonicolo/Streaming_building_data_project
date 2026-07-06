@@ -1,3 +1,5 @@
+"""Load and expose typed accessors for the A2B production configuration."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
