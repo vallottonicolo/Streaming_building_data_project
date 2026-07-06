@@ -42,7 +42,7 @@ A2A/models/gbt_best_model
 
 This saved Spark ML pipeline is loaded directly by the Part B streaming inference service.
 
-## Part B: Production App
+## Part B: Streaming, Live Inference and Visualisation
 
 Part B is implemented in:
 
