@@ -85,7 +85,6 @@ def run_producer(cfg: AppConfig) -> None:
     df = pd.read_csv(weather_csv)
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     df = df.dropna(subset=["timestamp"]).sort_values(["timestamp", "site_id"]).reset_index(drop=True)
-    df["date"] = df["timestamp"].dt.date
     unique_timestamps = sorted(df["timestamp"].unique())
     total_rows = len(df)
     _write_state(
@@ -110,7 +109,7 @@ def run_producer(cfg: AppConfig) -> None:
             send_ts = int(time.time())
             futures = []
             for _, row in batch.iterrows():
-                payload = _jsonable(row.drop(labels=["date"]))
+                payload = _jsonable(row)
                 payload["timestamp"] = pd.Timestamp(payload["timestamp"]).isoformat()
                 payload["weather_ts"] = send_ts
                 site_id = payload["site_id"]

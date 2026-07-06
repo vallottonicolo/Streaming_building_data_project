@@ -10,7 +10,6 @@ from .dashboard import run_dashboard
 from .inference import run_inference
 from .kafka_utils import ensure_topics, wait_for_kafka
 from .lakehouse_sink import run_lakehouse_sink
-from .monitor import run_monitor
 from .producer import run_producer
 
 
@@ -25,7 +24,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("run-daily-aggregator")
     sub.add_parser("run-lakehouse-sink")
     sub.add_parser("run-dashboard")
-    sub.add_parser("monitor")
     sub.add_parser("clean-runtime")
     return parser
 
@@ -53,9 +51,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "run-dashboard":
         run_dashboard(cfg)
-        return 0
-    if args.command == "monitor":
-        run_monitor(cfg)
         return 0
     if args.command == "clean-runtime":
         clean_runtime(cfg)

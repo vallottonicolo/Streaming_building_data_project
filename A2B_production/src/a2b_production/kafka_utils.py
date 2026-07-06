@@ -21,6 +21,8 @@ def ensure_topics(cfg: AppConfig) -> None:
     try:
         existing = set(admin.list_topics())
         new_topics = []
+
+        #Check for missing topics and create them if they don't exist
         for topic in cfg.topics.values():
             if topic not in existing:
                 new_topics.append(
@@ -36,18 +38,6 @@ def ensure_topics(cfg: AppConfig) -> None:
             except TopicAlreadyExistsError:
                 pass
 
-        existing = set(admin.list_topics())
-        desired = int(cfg.raw["kafka"]["partitions"])
-        for topic in cfg.topics.values():
-            if topic not in existing:
-                continue
-            desc = admin.describe_topics([topic])[0]
-            current = len(desc.get("partitions", []))
-            if current < desired:
-                try:
-                    admin.create_partitions({topic: NewPartitions(total_count=desired)})
-                except InvalidPartitionsError:
-                    pass
     finally:
         admin.close()
 
@@ -110,8 +100,3 @@ def wait_for_kafka(cfg: AppConfig, timeout_s: int = 60) -> None:
             last_error = exc
             time.sleep(2)
     raise RuntimeError(f"Kafka not reachable at {cfg.kafka_bootstrap}: {last_error}")
-
-
-def json_dumps(value: dict[str, Any]) -> str:
-    """Serialize a dictionary to compact JSON using string conversion fallbacks."""
-    return json.dumps(value, separators=(",", ":"), default=str)
