@@ -12,7 +12,6 @@ from .kafka_utils import ensure_topics, wait_for_kafka
 from .lakehouse_sink import run_lakehouse_sink
 from .monitor import run_monitor
 from .producer import run_producer
-from .validate import validate_config_command, validate_outputs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,7 +19,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="a2b-prod")
     parser.add_argument("--config", default=None, help="Path to YAML config")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("validate-config")
     sub.add_parser("create-topics")
     sub.add_parser("produce-weather")
     sub.add_parser("run-inference")
@@ -28,7 +26,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("run-lakehouse-sink")
     sub.add_parser("run-dashboard")
     sub.add_parser("monitor")
-    sub.add_parser("validate-outputs")
     sub.add_parser("clean-runtime")
     return parser
 
@@ -37,8 +34,6 @@ def main(argv: list[str] | None = None) -> int:
     """Dispatch the requested CLI command and return its process exit code."""
     args = build_parser().parse_args(argv)
     cfg = load_config(args.config)
-    if args.command == "validate-config":
-        return validate_config_command(cfg)
     if args.command == "create-topics":
         wait_for_kafka(cfg)
         ensure_topics(cfg)
@@ -62,8 +57,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "monitor":
         run_monitor(cfg)
         return 0
-    if args.command == "validate-outputs":
-        return validate_outputs(cfg)
     if args.command == "clean-runtime":
         clean_runtime(cfg)
         return 0

@@ -72,29 +72,3 @@ def load_config(path: str | Path | None = None) -> AppConfig:
     with cfg_path.open("r", encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
     return AppConfig(raw=raw)
-
-
-def validate_config(cfg: AppConfig) -> list[str]:
-    """Return human-readable configuration errors without raising."""
-    errors: list[str] = []
-    for key in ["weather_csv", "buildings_csv", "meters_csv", "model_path"]:
-        if not Path(cfg.paths[key]).exists():
-            errors.append(f"missing path {key}: {cfg.paths[key]}")
-    required_topics = ["weather", "weather_6h_blocks", "predictions_7a", "building_6h_7b", "site_daily_7c"]
-    for topic_key in required_topics:
-        if not cfg.topics.get(topic_key):
-            errors.append(f"missing kafka topic config: {topic_key}")
-    if int(cfg.raw["kafka"]["partitions"]) < 1:
-        errors.append("kafka.partitions must be positive")
-    if int(cfg.spark["shuffle_partitions"]) < 1:
-        errors.append("spark.shuffle_partitions must be positive")
-    if "compaction_delta_commits" in cfg.hudi and int(cfg.hudi["compaction_delta_commits"]) < 1:
-        errors.append("hudi.compaction_delta_commits must be positive")
-    if cfg.lakehouse:
-        if int(cfg.lakehouse.get("max_offsets_per_trigger", 1)) < 1:
-            errors.append("lakehouse.max_offsets_per_trigger must be positive")
-        if not str(cfg.lakehouse.get("trigger_interval", "")).strip():
-            errors.append("lakehouse.trigger_interval is required")
-    if cfg.dashboard and "retention_days" in cfg.dashboard and int(cfg.dashboard["retention_days"]) < 1:
-        errors.append("dashboard.retention_days must be positive")
-    return errors
