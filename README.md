@@ -5,6 +5,54 @@ A combined machine-learning and streaming application for predicting building en
 - **Part A** develops and saves a Spark ML regression model for 6-hour building energy prediction.
 - **Part B** runs that saved model in a production-style streaming app using Kafka, Spark Structured Streaming, Hudi, and a FastAPI dashboard.
 
+## Required Large Files Setup
+
+Some required data and model artifacts are too large to keep in normal Git history. Download them from the Dropbox artifact link:
+
+```text
+https://www.dropbox.com/t/yKvnaTqGv8HmN8V6
+```
+
+After downloading, open the included `big_files` folder. It should contain:
+
+```text
+big_files/
+|-- gbt_best_model/
+|-- weather_transf.csv
+|-- new_meters.csv
+`-- meters.csv
+```
+
+Copy those files into the project as follows:
+
+| Downloaded artifact | Destination path |
+| --- | --- |
+| `big_files/gbt_best_model/` | `A2A/models/gbt_best_model/` |
+| `big_files/weather_transf.csv` | `A2A/weather_transf.csv` |
+| `big_files/new_meters.csv` | `A2A/new_meters.csv` |
+| `big_files/meters.csv` | `A2A/meters.csv` |
+
+The Spark model must be copied as a folder. After setup, these paths should exist:
+
+```text
+A2A/models/gbt_best_model/metadata
+A2A/models/gbt_best_model/stages
+```
+
+Avoid creating an extra nested folder such as:
+
+```text
+A2A/models/gbt_best_model/gbt_best_model/metadata
+```
+
+The production inference job also requires:
+
+```text
+A2A/new_building_information.csv
+```
+
+This file is small and is expected to be kept in the repository rather than downloaded from the `big_files` bundle.
+
 ## Project Summary
 
 The end-to-end project starts with historical meter, building, and weather data. Part A explores and transforms those datasets into a supervised learning table where each row represents one building, one date, and one 6-hour block. A Spark ML pipeline is trained to predict the 6-hour energy consumption for that building block.
@@ -215,10 +263,10 @@ It expects these paths inside the Docker-mounted workspace:
 | --- | --- | --- |
 | `weather_csv` | `/workspace/A2/A2A/weather_transf.csv` | Transformed weather input for the producer |
 | `model_path` | `/workspace/A2/A2A/models/gbt_best_model` | Saved Spark ML model from Part A |
-| `buildings_csv` | `/workspace/A2/A2B/new_building_information.csv` | Building metadata for inference |
-| `meters_csv` | `/workspace/A2/A2B/new_meters.csv` | Meter data path kept in config |
+| `buildings_csv` | `/workspace/A2/A2A/new_building_information.csv` | Building metadata for inference |
+| `meters_csv` | `/workspace/A2/A2A/new_meters.csv` | Meter data for dashboard real-vs-predicted comparisons |
 
-In this checkout, the A2A weather/model artifacts are present, but the `A2B` folder is not present. Before running the full production pipeline, supply the expected `A2B/new_building_information.csv` and `A2B/new_meters.csv` files or update `configs/local.yaml` to point to valid files.
+The core streaming inference path requires `weather_transf.csv`, `new_building_information.csv`, and `gbt_best_model`. The dashboard can still run without `new_meters.csv`, but it will not show real meter vs predicted energy comparison data unless `A2A/new_meters.csv` is present.
 
 ## Running The Production App
 
@@ -321,7 +369,7 @@ Before relying on the test suite, check that tests match the current source code
 
 - If the model fails to load, rerun the Part A notebook and confirm `A2A/models/gbt_best_model` exists.
 - If the producer fails to start, confirm `A2A/weather_transf.csv` exists and matches the expected transformed weather schema.
-- If inference fails while reading buildings, provide `A2B/new_building_information.csv` or update `configs/local.yaml`.
+- If inference fails while reading buildings, confirm `A2A/new_building_information.csv` exists or update `configs/local.yaml`.
 - If no dashboard data appears, confirm the producer, inference, and daily aggregator services are running.
 - If Kafka topics already exist with the wrong partition count, use `docker compose down -v` and recreate the topics.
 - Run `clean-runtime` before a fresh pipeline run, not after starting the pipeline, because it removes runtime state such as checkpoints and Hudi data.
